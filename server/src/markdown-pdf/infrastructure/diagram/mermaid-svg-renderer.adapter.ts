@@ -1,5 +1,5 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import type {
@@ -7,7 +7,11 @@ import type {
   RenderedDiagram,
 } from '../../application/ports/diagram-renderer.port';
 import type { DiagramBlock } from '../../domain/value-objects/diagram-block.vo';
-import { createChromiumLaunchConfig } from '../browser/chromium-runtime';
+import {
+  createChromiumLaunchConfig,
+  isChromiumLaunchBusyError,
+  type ChromiumLaunchConfig,
+} from '../browser/chromium-runtime';
 
 interface MermaidRenderResult {
   readonly svg: string;
@@ -42,11 +46,7 @@ export class MermaidSvgRendererAdapter implements DiagramRendererPort {
     let browser: Browser | undefined;
 
     try {
-      browser = await puppeteer.launch({
-        args: [...launchConfig.args],
-        executablePath: launchConfig.executablePath,
-        headless: launchConfig.headless,
-      });
+      browser = await launchBrowserWithRetry(launchConfig);
 
       const page = await browser.newPage();
       await page.setJavaScriptEnabled(true);
@@ -100,12 +100,63 @@ export class MermaidSvgRendererAdapter implements DiagramRendererPort {
 }
 
 function resolveMermaidBundlePath(): string {
-  const requireFromCurrentFile = createRequire(__filename);
-  const packageJsonPath = requireFromCurrentFile.resolve(
-    'mermaid/package.json',
-  );
+  const candidates = [
+    join(process.cwd(), 'node_modules', 'mermaid', 'dist', 'mermaid.min.js'),
+    join(
+      process.cwd(),
+      'server',
+      'node_modules',
+      'mermaid',
+      'dist',
+      'mermaid.min.js',
+    ),
+    join(
+      dirname(__filename),
+      '..',
+      '..',
+      '..',
+      '..',
+      'node_modules',
+      'mermaid',
+      'dist',
+      'mermaid.min.js',
+    ),
+  ];
 
-  return join(dirname(packageJsonPath), 'dist', 'mermaid.min.js');
+  const bundlePath = candidates.find((candidate) => existsSync(candidate));
+  if (!bundlePath) {
+    throw new Error(
+      `Mermaid browser bundle was not found. Checked: ${candidates.join(', ')}`,
+    );
+  }
+
+  return bundlePath;
+}
+
+async function launchBrowserWithRetry(
+  launchConfig: ChromiumLaunchConfig,
+): Promise<Browser> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await puppeteer.launch({
+        args: [...launchConfig.args],
+        executablePath: launchConfig.executablePath,
+        headless: launchConfig.headless,
+      });
+    } catch (error) {
+      if (!isChromiumLaunchBusyError(error) || attempt === 3) {
+        throw error;
+      }
+
+      await wait(250 * attempt);
+    }
+  }
+
+  throw new Error('Failed to launch Chromium.');
+}
+
+async function wait(milliseconds: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function isMermaidRenderResult(value: unknown): value is MermaidRenderResult {

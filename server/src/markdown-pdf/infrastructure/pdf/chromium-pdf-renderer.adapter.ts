@@ -2,7 +2,11 @@ import puppeteer, { type Browser, type HTTPRequest } from 'puppeteer-core';
 import { ApplicationError } from '../../application/errors/application-error';
 import type { PdfRendererPort } from '../../application/ports/pdf-renderer.port';
 import type { RenderOptions } from '../../domain/value-objects/render-options.vo';
-import { createChromiumLaunchConfig } from '../browser/chromium-runtime';
+import {
+  createChromiumLaunchConfig,
+  isChromiumLaunchBusyError,
+  type ChromiumLaunchConfig,
+} from '../browser/chromium-runtime';
 import { mapPdfRenderingOptions } from './pdf-rendering-options.mapper';
 
 export class ChromiumPdfRendererAdapter implements PdfRendererPort {
@@ -11,11 +15,7 @@ export class ChromiumPdfRendererAdapter implements PdfRendererPort {
 
     try {
       const launchConfig = await createChromiumLaunchConfig();
-      browser = await puppeteer.launch({
-        args: [...launchConfig.args],
-        executablePath: launchConfig.executablePath,
-        headless: launchConfig.headless,
-      });
+      browser = await launchBrowserWithRetry(launchConfig);
 
       const page = await browser.newPage();
       await page.setJavaScriptEnabled(false);
@@ -61,6 +61,32 @@ export class ChromiumPdfRendererAdapter implements PdfRendererPort {
 
     void request.abort();
   }
+}
+
+async function launchBrowserWithRetry(
+  launchConfig: ChromiumLaunchConfig,
+): Promise<Browser> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await puppeteer.launch({
+        args: [...launchConfig.args],
+        executablePath: launchConfig.executablePath,
+        headless: launchConfig.headless,
+      });
+    } catch (error) {
+      if (!isChromiumLaunchBusyError(error) || attempt === 3) {
+        throw error;
+      }
+
+      await wait(250 * attempt);
+    }
+  }
+
+  throw new Error('Failed to launch Chromium.');
+}
+
+async function wait(milliseconds: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function withTimeout<T>(task: Promise<T>, timeoutMs: number): Promise<T> {

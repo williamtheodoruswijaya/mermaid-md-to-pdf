@@ -7,7 +7,22 @@ export interface ChromiumLaunchConfig {
   readonly headless: boolean | 'shell';
 }
 
+let launchConfigPromise: Promise<ChromiumLaunchConfig> | undefined;
+
 export async function createChromiumLaunchConfig(): Promise<ChromiumLaunchConfig> {
+  launchConfigPromise ??= buildChromiumLaunchConfig();
+  return launchConfigPromise;
+}
+
+export function isChromiumLaunchBusyError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message.includes('ETXTBSY') ||
+      error.message.includes('Text file busy'))
+  );
+}
+
+async function buildChromiumLaunchConfig(): Promise<ChromiumLaunchConfig> {
   const executable = await resolveChromiumExecutable();
 
   return {
