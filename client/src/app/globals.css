@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f7f8;
+  --foreground: #14181b;
+  --panel: #ffffff;
+  --panel-muted: #eef2f3;
+  --border: #d6dee3;
+  --muted: #5f6b73;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --indigo: #4f46e5;
+  --danger: #b42318;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 24%, white);
+}
