@@ -20,7 +20,7 @@ export function configureApplication(app: INestApplication): void {
 
 function resolveCorsOrigin(): boolean | string[] {
   const configuredOrigins = process.env.CLIENT_ORIGIN?.split(',')
-    .map((origin) => origin.trim())
+    .map(normalizeOrigin)
     .filter(Boolean);
 
   if (configuredOrigins?.length) {
@@ -28,4 +28,8 @@ function resolveCorsOrigin(): boolean | string[] {
   }
 
   return process.env.NODE_ENV === 'production' ? [] : true;
+}
+
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, '');
 }

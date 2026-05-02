@@ -54,7 +54,7 @@ Backend environment variables:
 
 ```env
 NODE_ENV=production
-CLIENT_ORIGIN=https://your-client.vercel.app
+CLIENT_ORIGIN=https://mermaid-md-to-pdf.vercel.app
 MAX_MARKDOWN_BYTES=1048576
 MAX_IMAGE_BYTES=5242880
 MAX_IMAGE_COUNT=20
@@ -67,8 +67,12 @@ RATE_LIMIT_MAX=20
 Frontend environment variable:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://your-server.vercel.app
+NEXT_PUBLIC_API_BASE_URL=https://mermaid-md-to-pdf-server.vercel.app
 ```
+
+`CLIENT_ORIGIN` must be the frontend origin, not the backend URL. Do not include
+a path; a trailing slash is tolerated by the backend, but Vercel's browser
+origin will be `https://mermaid-md-to-pdf.vercel.app`.
 
 The backend Vercel entrypoint is `server/src/api/index.ts`, routed by
 `server/vercel.json`. Chromium rendering uses `puppeteer-core` with

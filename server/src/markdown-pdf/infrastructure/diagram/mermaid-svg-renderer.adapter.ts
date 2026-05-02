@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import puppeteer, { type Browser } from 'puppeteer-core';
 import type {
   DiagramRendererPort,
@@ -100,7 +101,11 @@ export class MermaidSvgRendererAdapter implements DiagramRendererPort {
 
 function resolveMermaidBundlePath(): string {
   const requireFromCurrentFile = createRequire(__filename);
-  return requireFromCurrentFile.resolve('mermaid/dist/mermaid.min.js');
+  const packageJsonPath = requireFromCurrentFile.resolve(
+    'mermaid/package.json',
+  );
+
+  return join(dirname(packageJsonPath), 'dist', 'mermaid.min.js');
 }
 
 function isMermaidRenderResult(value: unknown): value is MermaidRenderResult {
